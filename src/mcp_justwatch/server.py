@@ -1,6 +1,7 @@
 """MCP server for JustWatch streaming availability data using FastMCP."""
 
 import logging
+import os
 from typing import Optional
 
 from fastmcp import FastMCP
@@ -9,11 +10,15 @@ from simplejustwatchapi import justwatch
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Configure file handler for this module's logger only
-file_handler = logging.FileHandler("output.log", mode="a")
-file_handler.setLevel(logging.INFO)
-file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
-logger.addHandler(file_handler)
+# Configure file handler for this module's logger only (set LOG_FILE="" to disable)
+log_file = os.environ.get("LOG_FILE", "output.log")
+if log_file:
+    file_handler = logging.FileHandler(log_file, mode="a")
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(
+        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    )
+    logger.addHandler(file_handler)
 
 # Initialize FastMCP server
 mcp = FastMCP("mcp-justwatch")
@@ -239,8 +244,26 @@ def get_offers_for_countries(
 
 
 def main():
-    """Entry point for the MCP server."""
-    mcp.run()
+    """Entry point for the MCP server.
+
+    Transport is selected with the MCP_TRANSPORT environment variable:
+    "stdio" (default) for local clients, or "http" for remote clients.
+    HTTP mode also reads MCP_HOST, MCP_PORT and MCP_PATH.
+    """
+    transport = os.environ.get("MCP_TRANSPORT", "stdio").lower()
+    if transport == "stdio":
+        mcp.run()
+        return
+
+    path = os.environ.get("MCP_PATH", "/mcp")
+    if not path.startswith("/"):
+        path = "/" + path
+    mcp.run(
+        transport=transport,
+        host=os.environ.get("MCP_HOST", "0.0.0.0"),
+        port=int(os.environ.get("MCP_PORT", "8000")),
+        path=path,
+    )
 
 
 if __name__ == "__main__":
