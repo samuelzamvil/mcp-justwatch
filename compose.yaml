@@ -1,0 +1,22 @@
+services:
+  mcp-justwatch:
+    build: .
+    image: mcp-justwatch:local
+    container_name: mcp-justwatch
+    restart: unless-stopped
+    environment:
+      MCP_PATH: ${MCP_PATH:-/mcp}
+    ports:
+      - "${HOST_PORT:-8000}:8000"
+
+  cloudflared:
+    image: cloudflare/cloudflared:2025.11.1
+    container_name: mcp-justwatch-cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN}
+    depends_on:
+      - mcp-justwatch
+    profiles:
+      - tunnel
